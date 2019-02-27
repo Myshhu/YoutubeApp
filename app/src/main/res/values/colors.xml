@@ -4,6 +4,7 @@
     <color name="colorPrimaryDark">#6F010A</color>
     <color name="colorAccent">#424242</color>
     <color name="colorItemPressed">#181818</color>
+    <color name="grey">#949494</color>
     <color name="dark_grey">#282828</color>
     <color name="colorTitles">#FFF</color>
     <color name="colorVideoInfo">#999999</color>

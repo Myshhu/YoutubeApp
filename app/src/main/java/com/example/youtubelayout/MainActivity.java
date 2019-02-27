@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
                 tvChannelTitle.setText(currentJSONObject.getJSONObject("snippet").
                         getString("channelTitle"));
                 TextView tvViews = convertView.findViewById(R.id.tvViews);
-                tvViews.setText("12345");
+                setVideoViews(videoKey, tvViews);
 
                 final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
                 new Thread(() -> {
@@ -149,7 +149,39 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setVideoViews(String videoKey, TextView tvViews) {
+        new Thread(() -> {
+            try {
+                HttpURLConnection connection;
+                URL url = new URL("https://www.googleapis.com/youtube/v3/videos?part=statistics&id=" + videoKey + "&key=" + API_KEY);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
 
+                if (connection.getResponseCode() == 200) {
+                    InputStream inputStream = connection.getInputStream();
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+
+                    String line;
+                    StringBuilder result = new StringBuilder();
+
+                    while ((line = bufferedReader.readLine()) != null) {
+                        result.append(line).append("\n");
+                    }
+
+                    JSONObject object = new JSONObject(result.toString());
+                    tvViews.setText(object.getJSONArray("items").getJSONObject(0).
+                            getJSONObject("statistics").getString("viewCount") + " wyświetlenia");
+
+                    /*String key = object.getJSONArray("items").
+                            getJSONObject(0).getJSONObject("id").
+                            getString("videoId");
+                    youTubePlayer.loadVideo(key, 0);*/
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
 
     /*public void btnSetClick(View view) {
         LinearLayout linearLayout = findViewById(R.id.linearLayoutItems);
