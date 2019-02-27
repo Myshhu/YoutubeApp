@@ -50,9 +50,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void btnSetClick(View view) {
+    public void btnSearchClick(View view) {
         EditText etSearch = findViewById(R.id.etSearch);
         String query = etSearch.getText().toString();
+        etSearch.clearFocus();
 
         new Thread(() -> {
             try {
@@ -169,8 +170,8 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     JSONObject object = new JSONObject(result.toString());
-                    tvViews.setText(object.getJSONArray("items").getJSONObject(0).
-                            getJSONObject("statistics").getString("viewCount") + " wyświetlenia");
+                    tvViews.setText(String.format("%s wyświetlenia", object.getJSONArray("items").getJSONObject(0).
+                            getJSONObject("statistics").getString("viewCount")));
 
                     /*String key = object.getJSONArray("items").
                             getJSONObject(0).getJSONObject("id").
@@ -183,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    /*public void btnSetClick(View view) {
+    /*public void btnSearchClick(View view) {
         LinearLayout linearLayout = findViewById(R.id.linearLayoutItems);
 
         LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
