@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/dark_grey"
     android:orientation="vertical"
+    android:focusableInTouchMode="true"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -18,7 +19,6 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="2"
-            android:focusable="true"
             android:padding="12dp"
             android:contentDescription="@string/Youtube_icon"
             app:srcCompat="@drawable/yt" />

@@ -2,6 +2,7 @@ package com.example.youtubelayout;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -9,6 +10,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -54,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         EditText etSearch = findViewById(R.id.etSearch);
         String query = etSearch.getText().toString();
         etSearch.clearFocus();
+        hideKeyboard(this);
 
         new Thread(() -> {
             try {
@@ -87,6 +90,17 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    private void hideKeyboard(Activity activity) {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        //Find the currently focused view, so we can grab the correct window token from it.
+        View view = activity.getCurrentFocus();
+        //If no view currently has focus, create a new one, just so we can grab a window token from it
+        if (view == null) {
+            view = new View(activity);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
     private void processJSONObject(JSONObject object) {
@@ -145,7 +159,11 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            runOnUiThread(() -> linearLayoutItems.addView(convertView));
+            runOnUiThread(() -> {
+                linearLayoutItems.addView(convertView);
+                //Add divider
+                //linearLayoutItems.addView(layoutInflater.inflate(R.layout.divider, null));
+            });
 
         }
     }
@@ -183,35 +201,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
-
-    /*public void btnSearchClick(View view) {
-        LinearLayout linearLayout = findViewById(R.id.linearLayoutItems);
-
-        LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View convertView = layoutInflater.inflate(R.layout.scrollview_item, null);
-
-        convertView.setOnClickListener(v -> System.out.println("you clicked me"));
-
-        final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
-        new Thread(() -> {
-            try {
-                //Load image from URL
-                Bitmap bitmap = BitmapFactory.decodeStream(
-                        (InputStream) new URL("https://i.ytimg.com/vi/8CdcCD5V-d8/mqdefault.jpg").getContent());
-                //Set image to imageView
-                runOnUiThread(() -> imageViewVideo.setImageBitmap(bitmap));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
-
-        TextView tvTitle = convertView.findViewById(R.id.tvTitle);
-        tvTitle.setText("Title");
-        TextView tvChannelTitle = convertView.findViewById(R.id.tvChannelTitle);
-        tvChannelTitle.setText("Channel Title");
-        TextView tvViews = convertView.findViewById(R.id.tvViews);
-        tvViews.setText("12345");
-
-        linearLayout.addView(convertView);
-    }*/
 }
