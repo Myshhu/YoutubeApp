@@ -165,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
                 tvChannelTitle.setText(currentJSONObject.getJSONObject("snippet").
                         getString("channelTitle"));
                 TextView tvViews = convertView.findViewById(R.id.tvViews);
-                //setVideoViews(videoKey, tvViews);
+                setVideoViews(videoKey, tvViews);
 
                 final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
                 new Thread(() -> {
@@ -187,7 +187,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
             runOnUiThread(() -> {
-                convertView.setOnClickListener(v -> System.out.println("clicked height " + convertView.getHeight() + " width " + convertView.getWidth()));
                 linearLayoutItems.addView(convertView);
             });
 
