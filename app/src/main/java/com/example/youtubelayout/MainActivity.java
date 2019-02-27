@@ -32,7 +32,7 @@ import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
-    private String VIDEO_CODE = "GdNwaa1m1Yo";
+    //private String VIDEO_CODE = "GdNwaa1m1Yo";
     private String API_KEY = com.example.youtubelayout.API_KEY.KEY;
     private YouTubePlayer youTubePlayer;
 
@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         youTubePlayerView.addYouTubePlayerListener(new AbstractYouTubePlayerListener() {
             @Override
             public void onReady(@NotNull YouTubePlayer player) {
-                player.loadVideo(VIDEO_CODE, 0);
+                //player.loadVideo(VIDEO_CODE, 0);
                 youTubePlayer = player;
             }
         });
@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     JSONObject object = new JSONObject(result.toString());
-
+                    //downloadViews(object);
                     /*String key = object.getJSONArray("items").
                             getJSONObject(0).getJSONObject("id").
                             getString("videoId");
@@ -90,6 +90,33 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }).start();
+    }
+
+    private String getAllVideoKeysString(JSONObject object) {
+        JSONArray results;
+        StringBuilder allVideoKeys = new StringBuilder();
+
+        try {
+            results = object.getJSONArray("items");
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        for (int i = 0; i < results.length(); i++) {
+            JSONObject currentJSONObject;
+            final String videoKey;
+            try {
+                currentJSONObject = results.getJSONObject(i);
+                videoKey = currentJSONObject.getJSONObject("id").
+                        getString("videoId");
+                allVideoKeys.append(videoKey).append(",");
+            } catch (JSONException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+        return allVideoKeys.toString();
     }
 
     private void hideKeyboard(Activity activity) {
@@ -138,14 +165,14 @@ public class MainActivity extends AppCompatActivity {
                 tvChannelTitle.setText(currentJSONObject.getJSONObject("snippet").
                         getString("channelTitle"));
                 TextView tvViews = convertView.findViewById(R.id.tvViews);
-                setVideoViews(videoKey, tvViews);
+                //setVideoViews(videoKey, tvViews);
 
                 final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
                 new Thread(() -> {
                     try {
                         //Load image from URL
                         Bitmap bitmap = BitmapFactory.decodeStream(
-                                (InputStream) new URL(currentJSONObject.getJSONObject("snippet").getJSONObject("thumbnails").getJSONObject("medium").
+                                (InputStream) new URL(currentJSONObject.getJSONObject("snippet").getJSONObject("thumbnails").getJSONObject("default").
                                         getString("url")).getContent());
                         //Set image to imageView
                         runOnUiThread(() -> imageViewVideo.setImageBitmap(bitmap));
@@ -160,9 +187,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             runOnUiThread(() -> {
+                convertView.setOnClickListener(v -> System.out.println("clicked height " + convertView.getHeight() + " width " + convertView.getWidth()));
                 linearLayoutItems.addView(convertView);
-                //Add divider
-                //linearLayoutItems.addView(layoutInflater.inflate(R.layout.divider, null));
             });
 
         }
