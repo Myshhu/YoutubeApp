@@ -29,23 +29,23 @@
         <TextView
             android:id="@+id/tvTitle"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:textSize="18sp"
+            android:textColor="@color/colorTitles"
             tools:text="Title" />
 
         <TextView
             android:id="@+id/tvChannelTitle"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorVideoInfo"
             tools:text="ChannelTitle" />
 
         <TextView
             android:id="@+id/tvViews"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorVideoInfo"
             tools:text="12345678" />
 
     </LinearLayout>

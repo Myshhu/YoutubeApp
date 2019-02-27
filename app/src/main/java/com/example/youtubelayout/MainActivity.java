@@ -31,7 +31,7 @@ import java.net.URL;
 public class MainActivity extends AppCompatActivity {
 
     private String VIDEO_CODE = "GdNwaa1m1Yo";
-    private String API_KEY = "";
+    private String API_KEY = com.example.youtubelayout.API_KEY.KEY;
     private YouTubePlayer youTubePlayer;
 
     @Override
