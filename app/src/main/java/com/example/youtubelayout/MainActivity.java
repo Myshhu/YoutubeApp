@@ -188,8 +188,14 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     JSONObject object = new JSONObject(result.toString());
-                    tvViews.setText(String.format("%s wyświetlenia", object.getJSONArray("items").getJSONObject(0).
-                            getJSONObject("statistics").getString("viewCount")));
+                    runOnUiThread(() -> {
+                        try {
+                            tvViews.setText(String.format("%s wyświetlenia", object.getJSONArray("items").getJSONObject(0).
+                                    getJSONObject("statistics").getString("viewCount")));
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    });
 
                     /*String key = object.getJSONArray("items").
                             getJSONObject(0).getJSONObject("id").
