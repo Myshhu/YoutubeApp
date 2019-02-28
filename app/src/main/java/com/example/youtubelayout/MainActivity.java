@@ -60,33 +60,41 @@ public class MainActivity extends AppCompatActivity {
         hideKeyboard(this);
 
         new Thread(() -> {
-            try {
-                HttpURLConnection connection;
-                URL url = new URL("https://www.googleapis.com/youtube/v3/search?part=snippet&q=" +
-                        query + "&maxResults=10&type=video&key=" + API_KEY);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
+            JSONObject videoInformationObject = getVideoInformationObject(query);
+            JSONObject videoStatisticsObject = getStatisticsObject(videoInformationObject);
 
-                if (connection.getResponseCode() == 200) {
-                    InputStream inputStream = connection.getInputStream();
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-
-                    String line;
-                    StringBuilder result = new StringBuilder();
-
-                    while ((line = bufferedReader.readLine()) != null) {
-                        result.append(line).append("\n");
-                    }
-
-                    JSONObject videoInformationObject = new JSONObject(result.toString());
-                    JSONObject videoStatisticsObject = getStatisticsObject(videoInformationObject);
-
-                    processJSONObject(videoInformationObject, videoStatisticsObject);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            //Clear current searching results
+            runOnUiThread(((LinearLayout)findViewById(R.id.linearLayoutItems))::removeAllViews);
+            processJSONObject(videoInformationObject, videoStatisticsObject);
         }).start();
+    }
+
+    private JSONObject getVideoInformationObject(String query) {
+        JSONObject videoInformationObject = null;
+        try {
+            HttpURLConnection connection;
+            URL url = new URL("https://www.googleapis.com/youtube/v3/search?part=snippet&q=" +
+                    query + "&maxResults=10&type=video&key=" + API_KEY);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            if (connection.getResponseCode() == 200) {
+                InputStream inputStream = connection.getInputStream();
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+                StringBuilder result = new StringBuilder();
+
+                while ((line = bufferedReader.readLine()) != null) {
+                    result.append(line).append("\n");
+                }
+
+                videoInformationObject = new JSONObject(result.toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return videoInformationObject;
     }
 
     private JSONObject getStatisticsObject(JSONObject object) {
@@ -155,15 +163,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void processJSONObject(JSONObject videoInformationObject, JSONObject videoStatisticsObject) {
-
+        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
         JSONArray results;
         HashMap<String, String> viewsMap = new HashMap<>();
 
         try {
             results = videoInformationObject.getJSONArray("items");
-
             //Load all views from object to map
-            if(videoStatisticsObject != null) {
+            if (videoStatisticsObject != null) {
                 for (int i = 0; i < videoStatisticsObject.getJSONArray("items").length(); i++) {
                     String id = videoStatisticsObject.getJSONArray("items").getJSONObject(i).getString("id");
                     String views = videoStatisticsObject.getJSONArray("items").getJSONObject(i).getJSONObject("statistics").getString("viewCount");
@@ -175,104 +182,68 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
-        runOnUiThread(linearLayoutItems::removeAllViews);
-
-        //Load all item to linearLayout
+        //Load all items to linearLayout
         for(int i = 0; i < results.length(); i++) {
-            LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View convertView = layoutInflater.inflate(R.layout.scrollview_item, null);
             JSONObject currentJSONObject;
-            final String videoKey;
             try {
                 currentJSONObject = results.getJSONObject(i);
-                videoKey = currentJSONObject.getJSONObject("id").
-                        getString("videoId");
             } catch (JSONException e) {
                 e.printStackTrace();
                 return;
             }
-
-            //Load video
-            convertView.setOnClickListener(v -> youTubePlayer.loadVideo(videoKey, 0));
-
-            //Set titles and views
-            try {
-                TextView tvTitle = convertView.findViewById(R.id.tvTitle);
-                tvTitle.setText(currentJSONObject.getJSONObject("snippet").
-                        getString("title"));
-                TextView tvChannelTitle = convertView.findViewById(R.id.tvChannelTitle);
-                tvChannelTitle.setText(currentJSONObject.getJSONObject("snippet").
-                        getString("channelTitle"));
-                TextView tvViews = convertView.findViewById(R.id.tvViews);
-
-                if (viewsMap.containsKey(videoKey) && viewsMap.get(videoKey) != null) {
-                    tvViews.setText(viewsMap.get(videoKey));
-                }
-
-                //Load video image
-                final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
-                new Thread(() -> {
-                    try {
-                        //Load image from URL
-                        Bitmap bitmap = BitmapFactory.decodeStream(
-                                (InputStream) new URL(currentJSONObject.getJSONObject("snippet").getJSONObject("thumbnails").getJSONObject("default").
-                                        getString("url")).getContent());
-                        //Set image to imageView
-                        runOnUiThread(() -> imageViewVideo.setImageBitmap(bitmap));
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-                return;
-            }
-
-            //Add view
+            View convertView = createScrollviewItem(currentJSONObject, viewsMap);
             runOnUiThread(() -> linearLayoutItems.addView(convertView));
-
         }
     }
 
-    private void setVideoViews(String videoKey, TextView tvViews) {
-        new Thread(() -> {
-            try {
-                HttpURLConnection connection;
-                URL url = new URL("https://www.googleapis.com/youtube/v3/videos?part=statistics&id=" + videoKey + "&key=" + API_KEY);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
+    private View createScrollviewItem(JSONObject videoObject, HashMap<String, String> viewsMap) {
+        LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View convertView = layoutInflater.inflate(R.layout.scrollview_item, null);
+        String videoKey;
+        try {
+            videoKey = videoObject.getJSONObject("id").
+                    getString("videoId");
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
 
-                if (connection.getResponseCode() == 200) {
-                    InputStream inputStream = connection.getInputStream();
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        //Load video
+        convertView.setOnClickListener(v -> youTubePlayer.loadVideo(videoKey, 0));
 
-                    String line;
-                    StringBuilder result = new StringBuilder();
+        //Set titles and views
+        try {
+            TextView tvTitle = convertView.findViewById(R.id.tvTitle);
+            tvTitle.setText(videoObject.getJSONObject("snippet").
+                    getString("title"));
+            TextView tvChannelTitle = convertView.findViewById(R.id.tvChannelTitle);
+            tvChannelTitle.setText(videoObject.getJSONObject("snippet").
+                    getString("channelTitle"));
+            TextView tvViews = convertView.findViewById(R.id.tvViews);
 
-                    while ((line = bufferedReader.readLine()) != null) {
-                        result.append(line).append("\n");
-                    }
-
-                    JSONObject object = new JSONObject(result.toString());
-                    runOnUiThread(() -> {
-                        try {
-                            tvViews.setText(String.format("%s wyświetlenia", object.getJSONArray("items").getJSONObject(0).
-                                    getJSONObject("statistics").getString("viewCount")));
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    });
-
-                    /*String key = object.getJSONArray("items").
-                            getJSONObject(0).getJSONObject("id").
-                            getString("videoId");
-                    youTubePlayer.loadVideo(key, 0);*/
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+            if (viewsMap.containsKey(videoKey) && viewsMap.get(videoKey) != null) {
+                tvViews.setText(viewsMap.get(videoKey) + " wyświetleń");
             }
-        }).start();
+
+            //Load video image
+            final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
+            new Thread(() -> {
+                try {
+                    //Load image from URL
+                    Bitmap bitmap = BitmapFactory.decodeStream(
+                            (InputStream) new URL(videoObject.getJSONObject("snippet").getJSONObject("thumbnails").getJSONObject("default").
+                                    getString("url")).getContent());
+                    //Set image to imageView
+                    runOnUiThread(() -> imageViewVideo.setImageBitmap(bitmap));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return convertView;
     }
 }
