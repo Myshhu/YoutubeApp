@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -77,14 +78,10 @@ public class MainActivity extends AppCompatActivity {
                         result.append(line).append("\n");
                     }
 
-                    JSONObject object = new JSONObject(result.toString());
-                    //downloadViews(object);
-                    /*String key = object.getJSONArray("items").
-                            getJSONObject(0).getJSONObject("id").
-                            getString("videoId");
-                    youTubePlayer.loadVideo(key, 0);*/
+                    JSONObject videoInformationObject = new JSONObject(result.toString());
+                    JSONObject videoStatisticsObject = getStatisticsObject(videoInformationObject);
 
-                    processJSONObject(object);
+                    processJSONObject(videoInformationObject, videoStatisticsObject);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -92,11 +89,13 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    private String getAllVideoKeysString(JSONObject object) {
+    private JSONObject getStatisticsObject(JSONObject object) {
         JSONArray results;
+        JSONObject statisticsObject = null;
         StringBuilder allVideoKeys = new StringBuilder();
 
         try {
+            //Get all videos from object
             results = object.getJSONArray("items");
         } catch (JSONException e) {
             e.printStackTrace();
@@ -107,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject currentJSONObject;
             final String videoKey;
             try {
+                //Make one long string from videoIds for statistics request
                 currentJSONObject = results.getJSONObject(i);
                 videoKey = currentJSONObject.getJSONObject("id").
                         getString("videoId");
@@ -116,7 +116,31 @@ public class MainActivity extends AppCompatActivity {
                 return null;
             }
         }
-        return allVideoKeys.toString();
+
+        //Get statistics
+        try {
+            HttpURLConnection connection;
+            URL url = new URL("https://www.googleapis.com/youtube/v3/videos?part=statistics&id=" + allVideoKeys.toString() + "&key=" + API_KEY);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.connect();
+
+            if (connection.getResponseCode() == 200) {
+                InputStream inputStream = connection.getInputStream();
+                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+
+                String line;
+                StringBuilder result = new StringBuilder();
+
+                while ((line = bufferedReader.readLine()) != null) {
+                    result.append(line).append("\n");
+                }
+                statisticsObject = new JSONObject(result.toString());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return statisticsObject;
     }
 
     private void hideKeyboard(Activity activity) {
@@ -130,18 +154,31 @@ public class MainActivity extends AppCompatActivity {
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
-    private void processJSONObject(JSONObject object) {
-        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
-        runOnUiThread(linearLayoutItems::removeAllViews);
+    private void processJSONObject(JSONObject videoInformationObject, JSONObject videoStatisticsObject) {
+
         JSONArray results;
+        HashMap<String, String> viewsMap = new HashMap<>();
 
         try {
-            results = object.getJSONArray("items");
+            results = videoInformationObject.getJSONArray("items");
+
+            //Load all views from object to map
+            if(videoStatisticsObject != null) {
+                for (int i = 0; i < videoStatisticsObject.getJSONArray("items").length(); i++) {
+                    String id = videoStatisticsObject.getJSONArray("items").getJSONObject(i).getString("id");
+                    String views = videoStatisticsObject.getJSONArray("items").getJSONObject(i).getJSONObject("statistics").getString("viewCount");
+                    viewsMap.put(id, views);
+                }
+            }
         } catch (JSONException e) {
             e.printStackTrace();
             return;
         }
 
+        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
+        runOnUiThread(linearLayoutItems::removeAllViews);
+
+        //Load all item to linearLayout
         for(int i = 0; i < results.length(); i++) {
             LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             View convertView = layoutInflater.inflate(R.layout.scrollview_item, null);
@@ -155,8 +192,11 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
                 return;
             }
+
+            //Load video
             convertView.setOnClickListener(v -> youTubePlayer.loadVideo(videoKey, 0));
 
+            //Set titles and views
             try {
                 TextView tvTitle = convertView.findViewById(R.id.tvTitle);
                 tvTitle.setText(currentJSONObject.getJSONObject("snippet").
@@ -165,8 +205,12 @@ public class MainActivity extends AppCompatActivity {
                 tvChannelTitle.setText(currentJSONObject.getJSONObject("snippet").
                         getString("channelTitle"));
                 TextView tvViews = convertView.findViewById(R.id.tvViews);
-                setVideoViews(videoKey, tvViews);
 
+                if (viewsMap.containsKey(videoKey) && viewsMap.get(videoKey) != null) {
+                    tvViews.setText(viewsMap.get(videoKey));
+                }
+
+                //Load video image
                 final ImageView imageViewVideo = convertView.findViewById(R.id.imageViewVideo);
                 new Thread(() -> {
                     try {
@@ -186,9 +230,8 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            runOnUiThread(() -> {
-                linearLayoutItems.addView(convertView);
-            });
+            //Add view
+            runOnUiThread(() -> linearLayoutItems.addView(convertView));
 
         }
     }
