@@ -3,17 +3,28 @@ package com.example.youtubelayout;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Activity;
+import android.app.SearchManager;
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
+import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SearchView;
 import android.widget.TextView;
 
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer;
@@ -29,6 +40,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
@@ -36,11 +48,14 @@ public class MainActivity extends AppCompatActivity {
     //private String VIDEO_CODE = "GdNwaa1m1Yo";
     private String API_KEY = com.example.youtubelayout.API_KEY.KEY;
     private YouTubePlayer youTubePlayer;
+    private ArrayAdapter<String> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        setACTextView();
 
         com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView youTubePlayerView = findViewById(R.id.youtubePlayerView);
         youTubePlayerView.enableBackgroundPlayback(true);
@@ -53,19 +68,47 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void setACTextView() {
+        CustomAutoCompleteTextView customACTextView = findViewById(R.id.etSearch);
+        ArrayList<String> searchHistory = new ArrayList<>();
+        searchHistory.add("Poland");
+        searchHistory.add("France");
+        searchHistory.add("Italy");
+        searchHistory.add("Germany");
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, searchHistory);
+        customACTextView.setAdapter(adapter);
+        customACTextView.setThreshold(0);
+
+        customACTextView.setOnClickListener(v -> customACTextView.showDropDown());
+        //Make dropdown show on first click
+        customACTextView.setOnFocusChangeListener((v, hasFocus) -> customACTextView.performClick());
+        //Perform search at item click
+        customACTextView.setOnItemClickListener((parent, view, position, id) -> {
+            hideKeyboard(this);
+            performSearch(adapter.getItem(position));
+        });
+    }
+
     public void btnSearchClick(View view) {
         EditText etSearch = findViewById(R.id.etSearch);
         String query = etSearch.getText().toString();
         etSearch.clearFocus();
         hideKeyboard(this);
 
+        adapter.insert(query, 0);
+        performSearch(query);
+    }
+
+    protected void performSearch(String query) {
         new Thread(() -> {
             JSONObject videoInformationObject = getVideoInformationObject(query);
             JSONObject videoStatisticsObject = getStatisticsObject(videoInformationObject);
 
             //Clear current searching results
-            runOnUiThread(((LinearLayout)findViewById(R.id.linearLayoutItems))::removeAllViews);
-            processJSONObject(videoInformationObject, videoStatisticsObject);
+            LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
+            runOnUiThread(linearLayoutItems::removeAllViews);
+
+            processJSONObject(videoInformationObject, videoStatisticsObject, linearLayoutItems);
         }).start();
     }
 
@@ -162,8 +205,7 @@ public class MainActivity extends AppCompatActivity {
         imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
-    private void processJSONObject(JSONObject videoInformationObject, JSONObject videoStatisticsObject) {
-        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
+    private void processJSONObject(JSONObject videoInformationObject, JSONObject videoStatisticsObject, LinearLayout linearLayoutItems) {
         JSONArray results;
         HashMap<String, String> viewsMap = new HashMap<>();
 
@@ -222,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
             TextView tvViews = convertView.findViewById(R.id.tvViews);
 
             if (viewsMap.containsKey(videoKey) && viewsMap.get(videoKey) != null) {
-                tvViews.setText(viewsMap.get(videoKey) + " wyświetleń");
+                tvViews.setText(String.format("%s wyświetleń", viewsMap.get(videoKey)));
             }
 
             //Load video image

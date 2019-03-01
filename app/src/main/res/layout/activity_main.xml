@@ -16,6 +16,7 @@
         tools:ignore="NestedWeights">
 
         <ImageView
+            android:id="@+id/ytIcon"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="2"
@@ -23,7 +24,7 @@
             android:contentDescription="@string/Youtube_icon"
             app:srcCompat="@drawable/yt" />
 
-        <EditText
+        <com.example.youtubelayout.CustomAutoCompleteTextView
             android:id="@+id/etSearch"
             android:layout_width="0dp"
             android:layout_height="match_parent"
