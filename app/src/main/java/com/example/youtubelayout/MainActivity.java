@@ -1,30 +1,18 @@
 package com.example.youtubelayout;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.app.Activity;
-import android.app.SearchManager;
 import android.content.Context;
-import android.database.Cursor;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Vibrator;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
-import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.SearchView;
 import android.widget.TextView;
 
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer;
@@ -43,18 +31,22 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 public class MainActivity extends AppCompatActivity {
 
     //private String VIDEO_CODE = "GdNwaa1m1Yo";
     private String API_KEY = com.example.youtubelayout.API_KEY.KEY;
     private YouTubePlayer youTubePlayer;
     private ArrayAdapter<String> adapter;
+    private ArrayList<String> searchHistory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        searchHistory = getArrayPrefs();
         setACTextView();
 
         com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView youTubePlayerView = findViewById(R.id.youtubePlayerView);
@@ -70,11 +62,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void setACTextView() {
         CustomAutoCompleteTextView customACTextView = findViewById(R.id.etSearch);
-        ArrayList<String> searchHistory = new ArrayList<>();
+        /*searchHistory = new ArrayList<>();
         searchHistory.add("Poland");
         searchHistory.add("France");
         searchHistory.add("Italy");
-        searchHistory.add("Germany");
+        searchHistory.add("Germany");*/
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, searchHistory);
         customACTextView.setAdapter(adapter);
         customACTextView.setThreshold(0);
@@ -89,13 +81,38 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public void setArrayPrefs(ArrayList<String> array) {
+        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("size", array.size());
+        for (int i = 0; i < array.size(); i++)
+            editor.putString(Integer.toString(i), array.get(i));
+        editor.apply();
+    }
+
+    public ArrayList<String> getArrayPrefs() {
+        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        int size = prefs.getInt("size", 0);
+        ArrayList<String> array = new ArrayList<>();
+        for (int i = 0; i < size; i++)
+            array.add(prefs.getString(Integer.toString(i), null));
+        return array;
+    }
+
     public void btnSearchClick(View view) {
         EditText etSearch = findViewById(R.id.etSearch);
         String query = etSearch.getText().toString();
         etSearch.clearFocus();
         hideKeyboard(this);
 
-        adapter.insert(query, 0);
+        System.out.println(adapter.getCount());
+        if(!query.equals("")) {
+            searchHistory.add(0, query);
+            //This works instead of notify
+            adapter.clear();
+            adapter.addAll(searchHistory);
+            setArrayPrefs(searchHistory);
+        }
         performSearch(query);
     }
 
@@ -225,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //Load all items to linearLayout
-        for(int i = 0; i < results.length(); i++) {
+        for (int i = 0; i < results.length(); i++) {
             JSONObject currentJSONObject;
             try {
                 currentJSONObject = results.getJSONObject(i);
