@@ -165,7 +165,10 @@ public class MainActivity extends AppCompatActivity {
         try {
             //Get all videos from object
             results = object.getJSONArray("items");
-        } catch (JSONException e) {
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
@@ -257,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
 
     private View createScrollviewItem(JSONObject videoObject, HashMap<String, String> viewsMap) {
         LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View convertView = layoutInflater.inflate(R.layout.scrollview_item, null);
+        View convertView = layoutInflater.inflate(R.layout.scrollview_item, findViewById(R.id.linearLayoutItems), false);
         String videoKey;
         try {
             videoKey = videoObject.getJSONObject("id").
@@ -268,8 +271,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //Load video
-        convertView.setOnClickListener(v -> youTubePlayer.loadVideo(videoKey, 0));
-
+        convertView.setOnClickListener(v -> {
+            youTubePlayer.loadVideo(videoKey, 0);
+            System.out.println("my height is " + convertView.getHeight());
+        });
         //Set titles and views
         try {
             TextView tvTitle = convertView.findViewById(R.id.tvTitle);
@@ -290,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     //Load image from URL
                     Bitmap bitmap = BitmapFactory.decodeStream(
-                            (InputStream) new URL(videoObject.getJSONObject("snippet").getJSONObject("thumbnails").getJSONObject("default").
+                            (InputStream) new URL(videoObject.getJSONObject("snippet").getJSONObject("thumbnails").getJSONObject("medium").
                                     getString("url")).getContent());
                     //Set image to imageView
                     runOnUiThread(() -> imageViewVideo.setImageBitmap(bitmap));

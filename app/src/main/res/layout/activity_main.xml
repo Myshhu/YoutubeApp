@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mainLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/dark_grey"
@@ -11,8 +12,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1.5"
+        android:layout_height="45dp"
         tools:ignore="NestedWeights">
 
         <ImageView
@@ -20,9 +20,11 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="2"
-            android:padding="12dp"
             android:contentDescription="@string/Youtube_icon"
-            app:srcCompat="@drawable/yt" />
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            app:srcCompat="@drawable/yt"
+            tools:srcCompat="@drawable/yt" />
 
         <com.example.youtubelayout.CustomAutoCompleteTextView
             android:id="@+id/etSearch"
@@ -30,7 +32,6 @@
             android:layout_height="match_parent"
             android:layout_weight="4"
             android:inputType="none"
-            android:autofillHints="@string/name_to_search"
             android:textColor="@color/colorTitles"/>
 
         <ImageView
