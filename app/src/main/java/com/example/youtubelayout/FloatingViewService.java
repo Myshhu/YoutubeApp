@@ -3,6 +3,7 @@ package com.example.youtubelayout;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -32,13 +33,18 @@ public class FloatingViewService extends Service {
         assert manager != null;
         manager.createNotificationChannel(chan);
 
+        //Create intent for app resume
+        PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, StaticActivity.activity.getIntent(), PendingIntent.FLAG_UPDATE_CURRENT);
+
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
         Notification notification = notificationBuilder.setOngoing(true)
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setContentTitle("Youtube app is running in background")
                 .setPriority(NotificationManager.IMPORTANCE_MIN)
                 .setCategory(Notification.CATEGORY_SERVICE)
+                .setContentIntent(pendingIntent)
                 .build();
+
         startForeground(2, notification);
     }
 
@@ -51,5 +57,6 @@ public class FloatingViewService extends Service {
         } else {
             startForeground(1, new Notification());
         }
+        StaticActivity.service = this;
     }
 }

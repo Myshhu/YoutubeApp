@@ -12,6 +12,9 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -20,6 +23,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener;
@@ -44,8 +48,10 @@ import androidx.core.app.NotificationCompat;
 public class MainActivity extends AppCompatActivity {
 
     //private String VIDEO_CODE = "GdNwaa1m1Yo";
-    private String API_KEY = com.example.youtubelayout.API_KEY.KEY;
-    private YouTubePlayer youTubePlayer;
+    private String[] API_KEYS_ARRAY = {com.example.youtubelayout.API_KEY.KEY,
+            com.example.youtubelayout.API_KEY.KEY1};
+    private int currentAPI_KEY = 0;
+    private String API_KEY = API_KEYS_ARRAY[0];    private YouTubePlayer youTubePlayer;
     private ArrayAdapter<String> adapter;
     private ArrayList<String> searchHistory;
 
@@ -53,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        StaticActivity.activity = this;
 
         startService(new Intent(MainActivity.this, FloatingViewService.class));
 
@@ -68,6 +75,12 @@ public class MainActivity extends AppCompatActivity {
                 youTubePlayer = player;
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        StaticActivity.service.stopForeground(true);
     }
 
     private void setACTextView() {
@@ -141,28 +154,44 @@ public class MainActivity extends AppCompatActivity {
 
     private JSONObject getVideoInformationObject(String query) {
         JSONObject videoInformationObject = null;
-        try {
-            HttpURLConnection connection;
-            URL url = new URL("https://www.googleapis.com/youtube/v3/search?part=snippet&q=" +
-                    query + "&maxResults=10&type=video&key=" + API_KEY);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
+        while(true) {
+            try {
+                HttpURLConnection connection;
+                URL url = new URL("https://www.googleapis.com/youtube/v3/search?part=snippet&q=" +
+                        query + "&maxResults=10&type=video&key=" + API_KEY);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
 
-            if (connection.getResponseCode() == 200) {
-                InputStream inputStream = connection.getInputStream();
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                if (connection.getResponseCode() == 200) {
+                    InputStream inputStream = connection.getInputStream();
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 
-                String line;
-                StringBuilder result = new StringBuilder();
+                    String line;
+                    StringBuilder result = new StringBuilder();
 
-                while ((line = bufferedReader.readLine()) != null) {
-                    result.append(line).append("\n");
+                    while ((line = bufferedReader.readLine()) != null) {
+                        result.append(line).append("\n");
+                    }
+
+                    videoInformationObject = new JSONObject(result.toString());
+                    break;
+                } else if (connection.getResponseCode() == 403) {
+                    if (currentAPI_KEY == API_KEYS_ARRAY.length - 1) {
+                        //Show toast when all keys are unavailable
+                        Handler handler = new Handler(Looper.getMainLooper());
+                        handler.post(() -> Toast.makeText(getApplicationContext(), "API limits exceeded, try again later", Toast.LENGTH_LONG).show());
+                        currentAPI_KEY = 0;
+                        API_KEY = API_KEYS_ARRAY[currentAPI_KEY];
+                        break;
+                    } else {
+                        //Change API_KEY
+                        API_KEY = API_KEYS_ARRAY[++currentAPI_KEY];
+                        Log.d("AppInfo", "Changed key to " + currentAPI_KEY);
+                    }
                 }
-
-                videoInformationObject = new JSONObject(result.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return videoInformationObject;
     }
@@ -199,27 +228,42 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //Get statistics
-        try {
-            HttpURLConnection connection;
-            URL url = new URL("https://www.googleapis.com/youtube/v3/videos?part=statistics&id=" + allVideoKeys.toString() + "&key=" + API_KEY);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
+        while(true) {
+            try {
+                HttpURLConnection connection;
+                URL url = new URL("https://www.googleapis.com/youtube/v3/videos?part=statistics&id=" + allVideoKeys.toString() + "&key=" + API_KEY);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
 
-            if (connection.getResponseCode() == 200) {
-                InputStream inputStream = connection.getInputStream();
-                BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+                if (connection.getResponseCode() == 200) {
+                    InputStream inputStream = connection.getInputStream();
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 
-                String line;
-                StringBuilder result = new StringBuilder();
+                    String line;
+                    StringBuilder result = new StringBuilder();
 
-                while ((line = bufferedReader.readLine()) != null) {
-                    result.append(line).append("\n");
+                    while ((line = bufferedReader.readLine()) != null) {
+                        result.append(line).append("\n");
+                    }
+                    statisticsObject = new JSONObject(result.toString());
+                    break;
+                } else if (connection.getResponseCode() == 403) {
+                    if (currentAPI_KEY == API_KEYS_ARRAY.length - 1) {
+                        //Show toast when all keys are unavailable
+                        Handler handler = new Handler(Looper.getMainLooper());
+                        handler.post(() -> Toast.makeText(getApplicationContext(), "API limits exceeded, try again later", Toast.LENGTH_LONG).show());
+                        currentAPI_KEY = 0;
+                        API_KEY = API_KEYS_ARRAY[currentAPI_KEY];
+                        break;
+                    } else {
+                        //Change API_KEY
+                        API_KEY = API_KEYS_ARRAY[++currentAPI_KEY];
+                        Log.d("AppInfo", "Changed key to " + currentAPI_KEY);
+                    }
                 }
-                statisticsObject = new JSONObject(result.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return statisticsObject;
     }
@@ -249,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
                     viewsMap.put(id, views);
                 }
             }
-        } catch (JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return;
         }
