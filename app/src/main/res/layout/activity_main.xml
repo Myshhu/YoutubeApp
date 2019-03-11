@@ -15,31 +15,30 @@
         android:layout_height="45dp"
         tools:ignore="NestedWeights">
 
-        <ImageView
-            android:id="@+id/ytIcon"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2"
-            android:contentDescription="@string/Youtube_icon"
-            android:padding="9dp"
-            android:scaleType="fitCenter"
-            app:srcCompat="@drawable/yt"
-            tools:srcCompat="@drawable/yt" />
-
-        <com.example.youtubelayout.CustomAutoCompleteTextView
+        <com.myshhu.youtubebackgroundplayer.CustomAutoCompleteTextView
             android:id="@+id/etSearch"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="4"
-            android:inputType="none"
-            android:textColor="@color/colorTitles"/>
+            android:hint="@string/search"
+            android:textColor="@color/colorTitles" />
+
+        <ImageView
+            android:id="@+id/clearTextViewButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.6"
+            android:padding="5dp"
+            android:contentDescription="@string/clear_icon"
+            android:scaleType="fitCenter"
+            android:onClick="btnClearTVClick"
+            app:srcCompat="@android:drawable/btn_dialog" />
 
         <ImageView
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_weight="0.5"
+            android:layout_weight="1"
             android:onClick="btnSearchClick"
-            android:padding="10dp"
             android:text="@android:string/search_go"
             android:contentDescription="@string/search_icon"
             app:srcCompat="@android:drawable/ic_menu_search" />
@@ -52,6 +51,39 @@
         android:layout_height="0dp"
         android:layout_weight="7">
     </com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView>
+
+    <TextView
+        android:id="@+id/tvCurrentVideoTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:paddingStart="15dp"
+        android:paddingTop="15dp"
+        android:paddingEnd="15dp"
+        android:paddingBottom="5dp"
+        android:textColor="#FFF"
+        android:textSize="16sp"
+        tools:text='VideoObject.getJSONObject("snippet").getString("title")' />
+
+    <TextView
+        android:id="@+id/tvCurrentVideoViews"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:paddingStart="15dp"
+        android:paddingEnd="15dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/colorVideoInfo"
+        android:textSize="12sp"
+        tools:text='VideoObject.getJSONObject("snippet").getString("title")' />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="5dp"
+        android:background="#3E3E3E"/>
 
     <ScrollView
         android:layout_width="match_parent"

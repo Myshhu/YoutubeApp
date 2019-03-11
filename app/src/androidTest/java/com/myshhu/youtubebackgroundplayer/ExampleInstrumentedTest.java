@@ -1,4 +1,4 @@
-package com.example.youtubelayout;
+package com.myshhu.youtubebackgroundplayer;
 
 import android.content.Context;
 import androidx.test.InstrumentationRegistry;

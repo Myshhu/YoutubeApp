@@ -1,6 +1,8 @@
 <resources>
-    <string name="app_name">YoutubeLayout</string>
-    <string name="Youtube_icon">Youtube icon</string>
+    <string name="app_name">Youtube Background</string>
+    <string name="clear_icon">Clear icon</string>
     <string name="name_to_search">Name to search</string>
     <string name="search_icon">Search icon</string>
+    <string name="views">views</string>
+    <string name="search">Search…</string>
 </resources>

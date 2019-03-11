@@ -1,16 +1,11 @@
-package com.example.youtubelayout;
+package com.myshhu.youtubebackgroundplayer;
 
 import android.app.Activity;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -41,15 +36,13 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.NotificationCompat;
 
 public class MainActivity extends AppCompatActivity {
 
     //private String VIDEO_CODE = "GdNwaa1m1Yo";
-    private String[] API_KEYS_ARRAY = {com.example.youtubelayout.API_KEY.KEY,
-            com.example.youtubelayout.API_KEY.KEY1};
+    private String[] API_KEYS_ARRAY = {com.myshhu.youtubebackgroundplayer.API_KEY.KEY,
+            com.myshhu.youtubebackgroundplayer.API_KEY.KEY1};
     private int currentAPI_KEY = 0;
     private String API_KEY = API_KEYS_ARRAY[0];    private YouTubePlayer youTubePlayer;
     private ArrayAdapter<String> adapter;
@@ -81,6 +74,11 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         StaticActivity.service.stopForeground(true);
+    }
+
+    public void btnClearTVClick(View view) {
+        EditText etSearch = findViewById(R.id.etSearch);
+        etSearch.setText("");
     }
 
     private void setACTextView() {
@@ -316,9 +314,12 @@ public class MainActivity extends AppCompatActivity {
         LayoutInflater layoutInflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View convertView = layoutInflater.inflate(R.layout.scrollview_item, findViewById(R.id.linearLayoutItems), false);
         String videoKey;
+        String videoTitle;
         try {
             videoKey = videoObject.getJSONObject("id").
                     getString("videoId");
+            videoTitle = videoObject.getJSONObject("snippet").
+                    getString("title");
         } catch (JSONException e) {
             e.printStackTrace();
             return null;
@@ -327,6 +328,12 @@ public class MainActivity extends AppCompatActivity {
         //Load video
         convertView.setOnClickListener(v -> {
             youTubePlayer.loadVideo(videoKey, 0);
+            TextView tvCurrentVideoTitle = findViewById(R.id.tvCurrentVideoTitle);
+            TextView tvCurrentVideoViews = findViewById(R.id.tvCurrentVideoViews);
+            tvCurrentVideoTitle.setText(videoTitle);
+            if (viewsMap.containsKey(videoKey) && viewsMap.get(videoKey) != null) {
+                tvCurrentVideoViews.setText(String.format("%s %s", viewsMap.get(videoKey), getString(R.string.views)));
+            }
             System.out.println("my height is " + convertView.getHeight());
         });
         //Set titles and views
@@ -340,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
             TextView tvViews = convertView.findViewById(R.id.tvViews);
 
             if (viewsMap.containsKey(videoKey) && viewsMap.get(videoKey) != null) {
-                tvViews.setText(String.format("%s wyświetleń", viewsMap.get(videoKey)));
+                tvViews.setText(String.format("%s %s", viewsMap.get(videoKey), getString(R.string.views)));
             }
 
             //Load video image

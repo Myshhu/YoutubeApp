@@ -1,4 +1,4 @@
-package com.example.youtubelayout;
+package com.myshhu.youtubebackgroundplayer;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

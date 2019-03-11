@@ -1,8 +1,8 @@
-package com.example.youtubelayout;
+package com.myshhu.youtubebackgroundplayer;
 
 import android.app.Service;
 
-public class StaticActivity {
+class StaticActivity {
     static MainActivity activity;
     static Service service;
 }
