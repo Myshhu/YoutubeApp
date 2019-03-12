@@ -1,8 +1,10 @@
 package com.myshhu.youtubebackgroundplayer;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -17,18 +19,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer;
-import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.YouTubePlayerTracker;
 
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,147 +40,136 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    //private String VIDEO_CODE = "GdNwaa1m1Yo";
-    private YouTubePlayerTracker tracker;
-    private Intent widgetIntent;
+    private Intent floatingPlayerServiceIntent;
     private String[] API_KEYS_ARRAY = {com.myshhu.youtubebackgroundplayer.API_KEY.KEY,
             com.myshhu.youtubebackgroundplayer.API_KEY.KEY1};
     private int currentAPI_KEY = 0;
-    private String API_KEY = API_KEYS_ARRAY[0];    private YouTubePlayer youTubePlayer;
-    private ArrayAdapter<String> adapter;
-    private ArrayList<String> searchHistory;
+    private String API_KEY = API_KEYS_ARRAY[0];
+    private ArrayAdapter<String> autoCompleteTextViewAdapter;
+    private ArrayList<String> searchHistoryList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        StaticActivity.activity = this;
 
-        searchHistory = getArrayPrefs();
-        setACTextView();
+        StaticReferences.activity = this;
 
+        searchHistoryList = loadSearchHistory();
+
+        initAutoCompleteTextView();
+        checkOverlayPermission();
+
+        createAndRegisterBroadcastReceiver();
+    }
+
+    public ArrayList<String> loadSearchHistory() {
+        ArrayList<String> historyElements = new ArrayList<>();
+        SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
+        int historyElementsAmount = sharedPreferences.getInt("size", 0);
+        for (int i = 0; i < historyElementsAmount; i++)
+            historyElements.add(sharedPreferences.getString(Integer.toString(i), null));
+        return historyElements;
+    }
+
+    private void initAutoCompleteTextView() {
+        CustomAutoCompleteTextView autoCompleteTextView = findViewById(R.id.autoCompleteTextViewSearchBar);
+        setAutoCompleteTextViewAdapter(autoCompleteTextView);
+        setAutoCompleteTextViewListeners(autoCompleteTextView);
+    }
+
+    private void setAutoCompleteTextViewAdapter(CustomAutoCompleteTextView autoCompleteTextView) {
+        autoCompleteTextViewAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, searchHistoryList);
+        autoCompleteTextView.setAdapter(autoCompleteTextViewAdapter);
+    }
+
+    private void setAutoCompleteTextViewListeners(CustomAutoCompleteTextView autoCompleteTextView) {
+        autoCompleteTextView.setOnClickListener(v -> autoCompleteTextView.showDropDown());
+        //Make dropdown show on first TextView click when unfocused
+        autoCompleteTextView.setOnFocusChangeListener((v, hasFocus) -> autoCompleteTextView.performClick());
+        //Perform video search at history item click
+        autoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
+            hideSoftKeyboard(this);
+            performVideoSearch(autoCompleteTextViewAdapter.getItem(position));
+        });
+    }
+
+    private void hideSoftKeyboard(Activity activity) {
+        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        //Find the currently focused view, so we can grab the correct window token from it.
+        View view = activity.getCurrentFocus();
+        //If no view currently has focus, create a new one, just so we can grab a window token from it
+        if (view == null) {
+            view = new View(activity);
+        }
+        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    }
+
+    private void checkOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-
             //If the draw over permission is not available open the settings screen
             //to grant the permission.
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));
             startActivityForResult(intent, 0);
         }
-
-        com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView youTubePlayerView = findViewById(R.id.youtubePlayerView);
-        youTubePlayerView.enableBackgroundPlayback(true);
-        youTubePlayerView.addYouTubePlayerListener(new AbstractYouTubePlayerListener() {
-            @Override
-            public void onReady(@NotNull YouTubePlayer player) {
-                //player.loadVideo(VIDEO_CODE, 0);
-                youTubePlayer = player;
-
-                tracker = new YouTubePlayerTracker();
-                youTubePlayer.addListener(tracker);
-
-                youTubePlayer.addListener(new AbstractYouTubePlayerListener() {
-                    @Override
-                    public void onStateChange(@NotNull YouTubePlayer youTubePlayer, @NotNull PlayerConstants.PlayerState state) {
-                        if(state == PlayerConstants.PlayerState.PLAYING) {
-                            Intent intent = new Intent("finish_activity");
-                            sendBroadcast(intent);
-                        }
-                        super.onStateChange(youTubePlayer, state);
-                    }
-                });
-            }
-        });
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        StaticActivity.service.stopForeground(true);
+    public void btnClearSearchBarClick(View view) {
+        AutoCompleteTextView autoCompleteTextViewSearchBar = findViewById(R.id.autoCompleteTextViewSearchBar);
+        autoCompleteTextViewSearchBar.setText("");
     }
 
-    public void btnClearTVClick(View view) {
-        EditText etSearch = findViewById(R.id.etSearch);
-        etSearch.setText("");
-    }
-
-    private void setACTextView() {
-        CustomAutoCompleteTextView customACTextView = findViewById(R.id.etSearch);
-        /*searchHistory = new ArrayList<>();
-        searchHistory.add("Poland");
-        searchHistory.add("France");
-        searchHistory.add("Italy");
-        searchHistory.add("Germany");*/
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, searchHistory);
-        customACTextView.setAdapter(adapter);
-        customACTextView.setThreshold(0);
-
-        customACTextView.setOnClickListener(v -> customACTextView.showDropDown());
-        //Make dropdown show on first click
-        customACTextView.setOnFocusChangeListener((v, hasFocus) -> customACTextView.performClick());
-        //Perform search at item click
-        customACTextView.setOnItemClickListener((parent, view, position, id) -> {
-            hideKeyboard(this);
-            performSearch(adapter.getItem(position));
-        });
-    }
-
-    public void setArrayPrefs(ArrayList<String> array) {
-        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("size", array.size());
-        for (int i = 0; i < array.size(); i++)
-            editor.putString(Integer.toString(i), array.get(i));
+    public void saveSearchHistory(ArrayList<String> searchHistory) {
+        SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putInt("size", searchHistory.size());
+        for (int i = 0; i < searchHistory.size(); i++)
+            editor.putString(Integer.toString(i), searchHistory.get(i));
         editor.apply();
     }
 
-    public ArrayList<String> getArrayPrefs() {
-        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
-        int size = prefs.getInt("size", 0);
-        ArrayList<String> array = new ArrayList<>();
-        for (int i = 0; i < size; i++)
-            array.add(prefs.getString(Integer.toString(i), null));
-        return array;
+    public void btnSearchVideoClick(View view) {
+        EditText autoCompleteTextViewSearchBar = findViewById(R.id.autoCompleteTextViewSearchBar);
+        autoCompleteTextViewSearchBar.clearFocus();
+        hideSoftKeyboard(this);
+
+        String searchQuery = autoCompleteTextViewSearchBar.getText().toString();
+        addSearchQueryToHistory(searchQuery);
+
+        performVideoSearch(searchQuery);
     }
 
-    public void btnSearchClick(View view) {
-        EditText etSearch = findViewById(R.id.etSearch);
-        String query = etSearch.getText().toString();
-        etSearch.clearFocus();
-        hideKeyboard(this);
-
-        System.out.println(adapter.getCount());
-        if(!query.equals("")) {
-            searchHistory.add(0, query);
-            //This works instead of notify
-            adapter.clear();
-            adapter.addAll(searchHistory);
-            setArrayPrefs(searchHistory);
+    private void addSearchQueryToHistory(String searchQuery) {
+        if (!searchQuery.equals("")) {
+            searchHistoryList.add(0, searchQuery);
+            //Adapter clearing and adding all again works instead of notifyItemsChanged()
+            autoCompleteTextViewAdapter.clear();
+            autoCompleteTextViewAdapter.addAll(searchHistoryList);
         }
-        performSearch(query);
     }
 
-    protected void performSearch(String query) {
+    protected void performVideoSearch(String searchQuery) {
         new Thread(() -> {
-            JSONObject videoInformationObject = getVideoInformationObject(query);
+            JSONObject videoInformationObject = getVideoInformationObject(searchQuery);
             JSONObject videoStatisticsObject = getStatisticsObject(videoInformationObject);
 
-            //Clear current searching results
-            LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
-            runOnUiThread(linearLayoutItems::removeAllViews);
+            clearCurrentSearchResults();
 
-            processJSONObject(videoInformationObject, videoStatisticsObject, linearLayoutItems);
+            processJSONObject(videoInformationObject, videoStatisticsObject);
         }).start();
     }
 
     private JSONObject getVideoInformationObject(String query) {
         JSONObject videoInformationObject = null;
-        while(true) {
+        boolean availableSpareAPI_KEYS = true;
+        while (availableSpareAPI_KEYS) {
             try {
                 HttpURLConnection connection;
                 URL url = new URL("https://www.googleapis.com/youtube/v3/search?part=snippet&q=" +
@@ -188,31 +177,19 @@ public class MainActivity extends AppCompatActivity {
                 connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
-                if (connection.getResponseCode() == 200) {
-                    InputStream inputStream = connection.getInputStream();
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-
-                    String line;
-                    StringBuilder result = new StringBuilder();
-
-                    while ((line = bufferedReader.readLine()) != null) {
-                        result.append(line).append("\n");
-                    }
-
-                    videoInformationObject = new JSONObject(result.toString());
+                if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    InputStream connectionInputStream = connection.getInputStream();
+                    videoInformationObject = createJSONObjectFromInputStream(connectionInputStream);
                     break;
-                } else if (connection.getResponseCode() == 403) {
-                    if (currentAPI_KEY == API_KEYS_ARRAY.length - 1) {
-                        //Show toast when all keys are unavailable
+                } else if (connection.getResponseCode() == HttpURLConnection.HTTP_FORBIDDEN) {
+                    if (areAllAPI_KEYSUnavailable()) {
                         Handler handler = new Handler(Looper.getMainLooper());
                         handler.post(() -> Toast.makeText(getApplicationContext(), "API limits exceeded, try again later", Toast.LENGTH_LONG).show());
-                        currentAPI_KEY = 0;
-                        API_KEY = API_KEYS_ARRAY[currentAPI_KEY];
-                        break;
+
+                        changeCurrentAPI_KEYToFirst();
+                        availableSpareAPI_KEYS = false;
                     } else {
-                        //Change API_KEY
-                        API_KEY = API_KEYS_ARRAY[++currentAPI_KEY];
-                        Log.d("AppInfo", "Changed key to " + currentAPI_KEY);
+                        changeCurrentAPI_KEY();
                     }
                 }
             } catch (Exception e) {
@@ -220,6 +197,30 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return videoInformationObject;
+    }
+
+    private JSONObject createJSONObjectFromInputStream(InputStream inputStream) throws Exception {
+        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        String line;
+        StringBuilder result = new StringBuilder();
+        while ((line = bufferedReader.readLine()) != null) {
+            result.append(line).append("\n");
+        }
+        return new JSONObject(result.toString());
+    }
+
+    private boolean areAllAPI_KEYSUnavailable() {
+        return currentAPI_KEY == API_KEYS_ARRAY.length - 1;
+    }
+
+    private void changeCurrentAPI_KEYToFirst() {
+        currentAPI_KEY = 0;
+        API_KEY = API_KEYS_ARRAY[currentAPI_KEY];
+    }
+
+    private void changeCurrentAPI_KEY() {
+        API_KEY = API_KEYS_ARRAY[++currentAPI_KEY];
+        Log.d("AppInfo", "Changed key to " + currentAPI_KEY);
     }
 
     private JSONObject getStatisticsObject(JSONObject object) {
@@ -254,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //Get statistics
-        while(true) {
+        while (true) {
             try {
                 HttpURLConnection connection;
                 URL url = new URL("https://www.googleapis.com/youtube/v3/videos?part=statistics&id=" + allVideoKeys.toString() + "&key=" + API_KEY);
@@ -294,20 +295,15 @@ public class MainActivity extends AppCompatActivity {
         return statisticsObject;
     }
 
-    private void hideKeyboard(Activity activity) {
-        InputMethodManager imm = (InputMethodManager) activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
-        //Find the currently focused view, so we can grab the correct window token from it.
-        View view = activity.getCurrentFocus();
-        //If no view currently has focus, create a new one, just so we can grab a window token from it
-        if (view == null) {
-            view = new View(activity);
-        }
-        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+    private void clearCurrentSearchResults() {
+        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
+        runOnUiThread(linearLayoutItems::removeAllViews);
     }
 
-    private void processJSONObject(JSONObject videoInformationObject, JSONObject videoStatisticsObject, LinearLayout linearLayoutItems) {
+    private void processJSONObject(JSONObject videoInformationObject, JSONObject videoStatisticsObject) {
         JSONArray results;
         HashMap<String, String> viewsMap = new HashMap<>();
+        LinearLayout linearLayoutItems = findViewById(R.id.linearLayoutItems);
 
         try {
             results = videoInformationObject.getJSONArray("items");
@@ -355,7 +351,17 @@ public class MainActivity extends AppCompatActivity {
 
         //Load video
         convertView.setOnClickListener(v -> {
-            youTubePlayer.loadVideo(videoKey, 0);
+            //youTubePlayer.loadVideo(videoKey, 0);
+
+            if (floatingPlayerServiceIntent == null) {
+                launchWidget(videoKey);
+            } else {
+                Intent intent = new Intent("play_video");
+                intent.putExtra("videoId", videoKey);
+                sendBroadcast(intent);
+                System.out.println("sent intent");
+            }
+
             TextView tvCurrentVideoTitle = findViewById(R.id.tvCurrentVideoTitle);
             TextView tvCurrentVideoViews = findViewById(R.id.tvCurrentVideoViews);
             tvCurrentVideoTitle.setText(videoTitle);
@@ -401,6 +407,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void btnLaunchWidgetClick(View view) {
+        launchWidget("0");
+    }
+
+    private void launchWidget(String videoId) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
 
             //If the draw over permission is not available open the settings screen
@@ -409,14 +419,29 @@ public class MainActivity extends AppCompatActivity {
                     Uri.parse("package:" + getPackageName()));
             startActivityForResult(intent, 0);
         } else {
-            float second = tracker.getCurrentSecond();
-            String videoId = tracker.getVideoId();
-            widgetIntent = new Intent(MainActivity.this, FloatingViewService.class);
-            widgetIntent.putExtra("second", second);
-            widgetIntent.putExtra("videoId", videoId);
-            Log.d("myinfo", "videoId: " + videoId);
-            Log.d("myinfo", "second: " + second);
-            startService(widgetIntent);
+            floatingPlayerServiceIntent = new Intent(MainActivity.this, floatingPlayerService.class);
+            floatingPlayerServiceIntent.putExtra("videoId", videoId);
+            startService(floatingPlayerServiceIntent);
         }
+    }
+
+    private void createAndRegisterBroadcastReceiver() {
+        BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context arg0, Intent intent) {
+                String action = intent.getAction();
+                if (Objects.equals(action, "widget_finished")) {
+                    floatingPlayerServiceIntent = null;
+                }
+            }
+        };
+        registerReceiver(broadcastReceiver, new IntentFilter("widget_finished"));
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        saveSearchHistory(searchHistoryList);
+        StaticReferences.floatingPlayerService.stopForeground(true);
     }
 }

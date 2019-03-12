@@ -2,7 +2,7 @@ package com.myshhu.youtubebackgroundplayer;
 
 import android.app.Service;
 
-class StaticActivity {
+class StaticReferences {
     static MainActivity activity;
-    static Service service;
+    static Service floatingPlayerService;
 }

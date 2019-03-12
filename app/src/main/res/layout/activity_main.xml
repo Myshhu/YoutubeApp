@@ -27,29 +27,30 @@
             app:srcCompat="@mipmap/ic_launcher" />
 
         <com.myshhu.youtubebackgroundplayer.CustomAutoCompleteTextView
-            android:id="@+id/etSearch"
+            android:id="@+id/autoCompleteTextViewSearchBar"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="4"
+            android:completionThreshold="0"
             android:hint="@string/search"
             android:textColor="@color/colorTitles" />
 
         <ImageView
-            android:id="@+id/clearTextViewButton"
+            android:id="@+id/buttonClearSearchBar"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="0.6"
             android:padding="5dp"
             android:contentDescription="@string/clear_icon"
             android:scaleType="fitCenter"
-            android:onClick="btnClearTVClick"
+            android:onClick="btnClearSearchBarClick"
             app:srcCompat="@android:drawable/btn_dialog" />
 
         <ImageView
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:onClick="btnSearchClick"
+            android:onClick="btnSearchVideoClick"
             android:text="@android:string/search_go"
             android:contentDescription="@string/search_icon"
             app:srcCompat="@android:drawable/ic_menu_search" />
