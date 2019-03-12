@@ -9,11 +9,11 @@ There is search history available in case of going back to previously played vid
 ##### Playing music
 ![playing_music](https://github.com/Myshhu/YoutubeApp/blob/master/img/y1.jpg)
 
-## Search results 1
+## Search results
 ![search_results](https://github.com/Myshhu/YoutubeApp/blob/master/img/y2.jpg)
 
-## Search results 2
-![search_results](https://github.com/Myshhu/YoutubeApp/blob/master/img/y3.jpg)
+## Playing music
+![playing_music](https://github.com/Myshhu/YoutubeApp/blob/master/img/y3.jpg)
 
-## Search history
-![search_history](https://github.com/Myshhu/YoutubeApp/blob/master/img/y4.jpg)
+## Screen at app launch
+![app_launch](https://github.com/Myshhu/YoutubeApp/blob/master/img/y4.jpg)
