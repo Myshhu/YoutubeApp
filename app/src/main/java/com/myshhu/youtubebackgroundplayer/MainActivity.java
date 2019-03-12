@@ -6,9 +6,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -20,8 +23,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer;
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener;
+import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.utils.YouTubePlayerTracker;
 
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
@@ -41,6 +46,8 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     //private String VIDEO_CODE = "GdNwaa1m1Yo";
+    private YouTubePlayerTracker tracker;
+    private Intent widgetIntent;
     private String[] API_KEYS_ARRAY = {com.myshhu.youtubebackgroundplayer.API_KEY.KEY,
             com.myshhu.youtubebackgroundplayer.API_KEY.KEY1};
     private int currentAPI_KEY = 0;
@@ -54,10 +61,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         StaticActivity.activity = this;
 
-        startService(new Intent(MainActivity.this, FloatingViewService.class));
-
         searchHistory = getArrayPrefs();
         setACTextView();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+
+            //If the draw over permission is not available open the settings screen
+            //to grant the permission.
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, 0);
+        }
 
         com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTubePlayerView youTubePlayerView = findViewById(R.id.youtubePlayerView);
         youTubePlayerView.enableBackgroundPlayback(true);
@@ -66,6 +80,20 @@ public class MainActivity extends AppCompatActivity {
             public void onReady(@NotNull YouTubePlayer player) {
                 //player.loadVideo(VIDEO_CODE, 0);
                 youTubePlayer = player;
+
+                tracker = new YouTubePlayerTracker();
+                youTubePlayer.addListener(tracker);
+
+                youTubePlayer.addListener(new AbstractYouTubePlayerListener() {
+                    @Override
+                    public void onStateChange(@NotNull YouTubePlayer youTubePlayer, @NotNull PlayerConstants.PlayerState state) {
+                        if(state == PlayerConstants.PlayerState.PLAYING) {
+                            Intent intent = new Intent("finish_activity");
+                            sendBroadcast(intent);
+                        }
+                        super.onStateChange(youTubePlayer, state);
+                    }
+                });
             }
         });
     }
@@ -370,5 +398,25 @@ public class MainActivity extends AppCompatActivity {
             return null;
         }
         return convertView;
+    }
+
+    public void btnLaunchWidgetClick(View view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+
+            //If the draw over permission is not available open the settings screen
+            //to grant the permission.
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, 0);
+        } else {
+            float second = tracker.getCurrentSecond();
+            String videoId = tracker.getVideoId();
+            widgetIntent = new Intent(MainActivity.this, FloatingViewService.class);
+            widgetIntent.putExtra("second", second);
+            widgetIntent.putExtra("videoId", videoId);
+            Log.d("myinfo", "videoId: " + videoId);
+            Log.d("myinfo", "second: " + second);
+            startService(widgetIntent);
+        }
     }
 }

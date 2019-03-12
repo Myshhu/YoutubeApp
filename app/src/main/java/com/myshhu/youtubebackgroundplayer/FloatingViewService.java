@@ -5,11 +5,14 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -50,7 +53,8 @@ public class FloatingViewService extends Service {
     private int currentAPI_KEY = 0;
     private String API_KEY = API_KEYS_ARRAY[0];
 
-    private String VIDEO_CODE = "GdNwaa1m1Yo";
+    private String VIDEO_CODE;
+    private float VIDEO_SECOND;
     private YouTubePlayer youTubePlayer;
 
     @Override
@@ -83,6 +87,20 @@ public class FloatingViewService extends Service {
 
         startForeground(2, notification);
     }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Bundle extras = intent.getExtras();
+        if (extras != null) {
+            VIDEO_CODE = extras.getString("videoId", "");
+            VIDEO_SECOND = extras.getFloat("second", 0) + 3.8f;
+            Log.d("myinfo", "received videoId: " + VIDEO_CODE);
+            Log.d("myinfo", "received second: " + VIDEO_SECOND);
+        }
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+
 
     @Override
     public void onCreate() {
@@ -127,9 +145,26 @@ public class FloatingViewService extends Service {
         youTubePlayerView.addYouTubePlayerListener(new AbstractYouTubePlayerListener() {
             @Override
             public void onReady(@NotNull YouTubePlayer player) {
-                player.seekTo();
+                youTubePlayer = player;
+                player.loadVideo(VIDEO_CODE, VIDEO_SECOND);
+                Log.d("myinfo", "passed videoId: " + VIDEO_CODE);
+                Log.d("myinfo", "passed second: " + VIDEO_SECOND);
             }
         });
+
+        BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context arg0, Intent intent) {
+                String action = intent.getAction();
+                if (action.equals("finish_activity")) {
+                    unregisterReceiver(this);
+                    stopSelf();
+                    // DO WHATEVER YOU WANT.
+                }
+            }
+        };
+
+        registerReceiver(broadcastReceiver, new IntentFilter("finish_activity"));
 
         etSearch = floatingView.findViewById(R.id.etSearch);
         etSearch.setOnClickListener(v -> {
